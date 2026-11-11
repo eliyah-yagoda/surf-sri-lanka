@@ -280,6 +280,22 @@
   });
 
   showText(0); setRail(0);
+
+  // ?demo — hands-free walkthrough (used for recording the promo video)
+  if (new URLSearchParams(location.search).has('demo')) {
+    loader.style.display = 'none';
+    const waitAll = () => (loaded >= total && hero.complete && document.fonts.status === 'loaded') ? run() : setTimeout(waitAll, 200);
+    const run = () => {
+      window.__demoReady = true;
+      const next = () => {
+        if (stage >= STAGES - 1) { setTimeout(() => { window.__demoDone = true; }, 2600); return; }
+        forward();
+        const t = setInterval(() => { if (!playing) { clearInterval(t); setTimeout(next, 1700); } }, 40);
+      };
+      setTimeout(next, 2600);
+    };
+    waitAll();
+  }
 })();
 </script>
 </body>
