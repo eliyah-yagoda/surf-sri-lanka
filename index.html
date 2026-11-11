@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Serendib Surf — Surf Sri Lanka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --background: 200 40% 6%;
+    --foreground: 40 33% 97%;
+    --accent: 172 72% 52%;
+    --sun: 28 95% 62%;
+    --muted: 40 15% 80%;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: Inter, system-ui, sans-serif; overscroll-behavior: none; }
+  .stage { position: fixed; inset: 0; width: 100dvw; height: 100dvh; overflow: hidden; touch-action: none; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; transition: transform .9s var(--ease), filter .9s var(--ease); }
+  .blinking canvas { transform: scale(1.035); filter: blur(6px) brightness(.7); transition: transform .18s ease-in, filter .18s ease-in; }
+  .veil { position: absolute; inset: 0; background: hsl(var(--background)); opacity: 0; pointer-events: none; transition: opacity .45s var(--ease); z-index: 2; }
+  .blinking .veil { opacity: .92; transition: opacity .18s ease-in; }
+  .shade { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to top, hsl(var(--background) / .85) 0%, hsl(var(--background) / .35) 35%, transparent 60%),
+                linear-gradient(to bottom, hsl(var(--background) / .55) 0%, transparent 22%); }
+  header { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: clamp(16px, 3vw, 36px) clamp(16px, 4vw, 56px); z-index: 3; }
+  .logo { font-family: 'Instrument Serif', serif; font-size: clamp(22px, 2vw, 30px); letter-spacing: .01em; }
+  .logo i { color: hsl(var(--accent)); }
+  nav { display: flex; gap: 28px; align-items: center; font-size: 14px; }
+  nav a { color: hsl(var(--foreground) / .8); text-decoration: none; }
+  nav a:hover { color: hsl(var(--foreground)); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 12px 22px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform .2s, background .2s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: hsl(var(--foreground)); color: hsl(var(--background)); }
+  .btn-ghost { border: 1px solid hsl(var(--foreground) / .4); color: hsl(var(--foreground)); backdrop-filter: blur(8px); background: hsl(var(--foreground) / .06); }
+  @media (max-width: 760px) { nav .link { display: none; } }
+
+  .copy { position: absolute; left: clamp(16px, 4vw, 56px); right: clamp(16px, 4vw, 56px); bottom: clamp(56px, 9vh, 110px); max-width: 680px; z-index: 3; }
+  .panel { position: absolute; left: 0; bottom: 0; width: 100%; visibility: hidden; pointer-events: none; transition: visibility 0s .4s; }
+  .panel.on { visibility: visible; pointer-events: auto; transition: none; }
+  .panel > * { opacity: 0; transform: translateY(18px); filter: blur(8px); transition: opacity .35s ease-in, transform .35s ease-in, filter .35s ease-in; }
+  .panel.on > * { opacity: 1; transform: none; filter: none; transition: opacity .9s var(--ease), transform 1s var(--ease), filter .9s var(--ease); }
+  .panel.on > *:nth-child(2) { transition-delay: .08s; }
+  .panel.on > *:nth-child(3) { transition-delay: .18s; }
+  .panel.on > *:nth-child(4) { transition-delay: .28s; }
+  .panel.on > *:nth-child(5) { transition-delay: .38s; }
+  .eyebrow { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: hsl(var(--accent)); font-weight: 600; margin-bottom: 18px; }
+  h1, h2 { font-family: 'Instrument Serif', serif; font-weight: 400; line-height: .95; letter-spacing: -.01em; font-size: clamp(44px, 7.2vw, 112px); }
+  h1 em, h2 em { color: hsl(var(--sun)); }
+  .panel p { margin-top: 20px; max-width: 460px; font-size: clamp(15px, 1.2vw, 18px); line-height: 1.55; color: hsl(var(--muted)); }
+  .ctas { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .stats { margin-top: 32px; display: flex; gap: clamp(20px, 4vw, 48px); }
+  .stats b { display: block; font-family: 'Instrument Serif', serif; font-weight: 400; font-size: clamp(28px, 3vw, 42px); }
+  .stats span { font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: hsl(var(--muted)); }
+
+  .rail { position: absolute; right: clamp(16px, 3vw, 40px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 14px; z-index: 3; }
+  .rail button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; justify-content: flex-end; font-size: 11px; letter-spacing: .14em; color: hsl(var(--foreground) / .5); transition: color .4s; }
+  .rail button:hover { color: hsl(var(--foreground) / .85); }
+  .rail button::after { content: ''; width: 18px; height: 2px; border-radius: 2px; background: currentColor; transition: width .5s var(--ease), background .5s; }
+  .rail button.on { color: hsl(var(--foreground)); }
+  .rail button.on::after { width: 36px; background: hsl(var(--accent)); }
+  @media (max-width: 760px) { .rail { display: none; } }
+
+  .hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: hsl(var(--foreground) / .7); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity .6s; }
+  .hint::after { content: ''; width: 1px; height: 28px; background: linear-gradient(hsl(var(--foreground)), transparent); animation: drip 1.8s ease-in-out infinite; }
+  @keyframes drip { 0% { transform: scaleY(0); transform-origin: top } 50% { transform: scaleY(1); transform-origin: top } 51% { transform-origin: bottom } 100% { transform: scaleY(0); transform-origin: bottom } }
+  .loader { position: absolute; left: 0; bottom: 0; height: 2px; background: hsl(var(--accent)); z-index: 4; transition: width .3s, opacity .6s; }
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="veil"></div>
+  <div class="shade"></div>
+
+  <header>
+    <div class="logo">Serendib <i>Surf</i></div>
+    <nav>
+      <a class="link" href="#">Camps</a>
+      <a class="link" href="#">Spots</a>
+      <a class="link" href="#">Coaching</a>
+      <a class="btn btn-primary" href="#">Book now</a>
+    </nav>
+  </header>
+
+  <section class="copy">
+    <div class="panel on" data-i="0">
+      <div class="eyebrow">Sri Lanka · South Coast</div>
+      <h1>Where the island<br/>meets the <em>swell.</em></h1>
+      <p>Warm water, palm-lined bays and peaks you can share with a few friends. Your Sri Lanka surf trip starts here.</p>
+    </div>
+    <div class="panel" data-i="1">
+      <div class="eyebrow">01 — Arrive</div>
+      <h2>Barefoot<br/>to the <em>break.</em></h2>
+      <p>Stay steps from the sand in Weligama, Ahangama and Hiriketiya. Boards waxed, coconuts cold, ocean waiting.</p>
+    </div>
+    <div class="panel" data-i="2">
+      <div class="eyebrow">02 — Paddle out</div>
+      <h2>Find your <em>line.</em></h2>
+      <p>Small-group coaching for every level, from your first pop-up to reading a reef. 28°C water, no wetsuit required.</p>
+    </div>
+    <div class="panel" data-i="3">
+      <div class="eyebrow">03 — Drop in</div>
+      <h2>Ride the<br/>Indian <em>Ocean.</em></h2>
+      <p>Point breaks, reef peaks and golden-hour sessions, guided by local surfers who know every swell.</p>
+    </div>
+    <div class="panel" data-i="4">
+      <div class="eyebrow">04 — One more</div>
+      <h2>Stay for<br/>the <em>next one.</em></h2>
+      <p>Kick out, grin, paddle back. Surf, stay and coaching packages from 7 nights on Sri Lanka's south coast.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="#">Book your surf trip →</a>
+        <a class="btn btn-ghost" href="#">Explore camps</a>
+      </div>
+      <div class="stats">
+        <div><b>28°C</b><span>Water temp</span></div>
+        <div><b>2</b><span>Coasts</span></div>
+        <div><b>365</b><span>Days of swell</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rail" id="rail">
+    <button data-go="0">INTRO</button>
+    <button data-go="1">ARRIVE</button>
+    <button data-go="2">PADDLE</button>
+    <button data-go="3">RIDE</button>
+    <button data-go="4">STAY</button>
+  </div>
+
+  <div class="hint" id="hint">Scroll</div>
+  <div class="loader" id="loader" style="width:0"></div>
+</main>
+
+<script>
+(() => {
+  const BASE = 'public';
+  const FPS = 24;
+  // Forward: stage k -> k+1 plays CLIPS[k]. Each clip plays once and holds its last frame.
+  const CLIPS = [
+    { dir: 's2', frames: 145 },
+    { dir: 's3', frames: 145 },
+    { dir: 's4', frames: 145 },
+    { dir: 's5', frames: 145 },
+  ];
+  const XFADE = 14;       // frames of crossfade into a clip (smooths photo -> clip 2)
+  const TEXT_AT = 0.78;   // reveal next headline at 78% of the clip
+
+  const pad = n => String(n).padStart(4, '0');
+  const stageEl = document.getElementById('stage');
+  const loader = document.getElementById('loader');
+
+  // ---------- preload ----------
+  const hero = new Image(); hero.src = `${BASE}/hero.webp`;
+  const seqs = CLIPS;
+  const frames = seqs.map(c => Array(c.frames).fill(null));
+  const total = seqs.reduce((a, c) => a + c.frames, 0);
+  const queue = [];
+  seqs.forEach((c, si) => { for (let i = 0; i < c.frames; i++) queue.push([si, i, `${BASE}/sequences/${c.dir}/${pad(i + 1)}.webp`]); });
+  let qi = 0, loaded = 0;
+  const pump = () => {
+    if (qi >= queue.length) return;
+    const [si, i, src] = queue[qi++];
+    const im = new Image(); im.decoding = 'async';
+    const done = () => { if (im.naturalWidth) frames[si][i] = im; loaded++; loader.style.width = (loaded / total * 100) + '%'; if (loaded === total) loader.style.opacity = 0; pump(); };
+    im.onload = done; im.onerror = done; im.src = src;
+  };
+  for (let k = 0; k < 8; k++) pump();
+  const clipFrames = k => frames[k];
+
+  // ---------- canvas ----------
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  let shown = [hero, null, 0]; // [base, over, alpha]
+  const cover = (im, a) => {
+    if (!im || !im.naturalWidth) return;
+    const s = Math.max(cv.width / im.naturalWidth, cv.height / im.naturalHeight);
+    const w = im.naturalWidth * s, h = im.naturalHeight * s;
+    ctx.globalAlpha = a; ctx.drawImage(im, (cv.width - w) / 2, (cv.height - h) / 2, w, h); ctx.globalAlpha = 1;
+  };
+  const render = (base, over = null, a = 0) => {
+    shown = [base, over, a];
+    cover(base, 1);
+    if (over && a > 0) cover(over, a);
+  };
+  const lastShown = () => (shown[1] && shown[2] >= .5 ? shown[1] : shown[0]);
+  const resize = () => { const d = Math.min(devicePixelRatio || 1, 2); cv.width = innerWidth * d; cv.height = innerHeight * d; render(...shown); };
+  hero.onload = () => { if (stage === 0 && !playing) render(hero); };
+  addEventListener('resize', resize); resize();
+
+  // ---------- UI ----------
+  const STAGES = CLIPS.length + 1;
+  const panels = [...document.querySelectorAll('.panel')];
+  const railBtns = [...document.querySelectorAll('#rail button')];
+  const hint = document.getElementById('hint');
+  const showText = i => panels.forEach(p => p.classList.toggle('on', +p.dataset.i === i));
+  const setRail = i => { railBtns.forEach(b => b.classList.toggle('on', +b.dataset.go === i)); hint.style.opacity = i === STAGES - 1 ? 0 : 1; };
+
+  // ---------- playback ----------
+  let stage = 0, playing = false, raf = 0, token = 0;
+  const stop = () => { token++; cancelAnimationFrame(raf); playing = false; };
+  // gentle ease: mostly linear (keeps video motion natural), soft start and settle
+  const ease = p => .7 * p + .3 * (.5 - .5 * Math.cos(Math.PI * p));
+
+  const playClip = (arr, from, onText, onEnd) => {
+    const my = ++token, n = arr.length, dur = n / FPS * 1000;
+    let t = 0, last = performance.now(), textDone = false;
+    playing = true;
+    const tick = now => {
+      if (my !== token) return;
+      const dt = Math.min(now - last, 64); last = now;
+      const p0 = Math.min(1, t / dur);
+      const f = Math.round(ease(p0) * (n - 1));
+      const im = arr[f];
+      if (im) {
+        t += dt;
+        if (from && f < XFADE) render(from, im, ease(f / XFADE)); else render(im);
+        if (!textDone && p0 >= TEXT_AT) { textDone = true; onText(); }
+        if (p0 >= 1) { playing = false; onEnd(); return; }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  };
+
+  const stageImage = i => i === 0 ? hero : clipFrames(i - 1)[CLIPS[i - 1].frames - 1];
+
+  const forward = () => {
+    if (playing || stage >= STAGES - 1) return;
+    const from = stage, next = stage + 1;
+    stop(); showText(-1); setRail(next);
+    playClip(clipFrames(from), lastShown(), () => showText(next), () => { stage = next; });
+  };
+
+  // Quick "blink": soft dark flash + slight zoom/blur, swap, reveal
+  let blinkTimer = 0;
+  const blink = target => {
+    stop(); clearTimeout(blinkTimer);
+    showText(-1); setRail(target);
+    stageEl.classList.add('blinking');
+    blinkTimer = setTimeout(() => {
+      stage = target;
+      render(stageImage(target));
+      stageEl.classList.remove('blinking');
+      setTimeout(() => showText(target), 120);
+    }, 200);
+  };
+
+  const back = () => {
+    if (playing) return blink(stage);        // mid-clip: snap back to where it started
+    if (stage > 0) blink(stage - 1);
+  };
+
+  railBtns.forEach(b => b.addEventListener('click', () => {
+    const target = +b.dataset.go;
+    if (target === stage && !playing) return;
+    if (target === stage + 1 && !playing) forward(); else blink(target);
+  }));
+
+  // ---------- input ----------
+  let wheelLock = 0;
+  addEventListener('wheel', e => {
+    e.preventDefault();
+    const now = Date.now();
+    if (Math.abs(e.deltaY) < 8 || now < wheelLock) return;
+    wheelLock = now + 500;
+    e.deltaY > 0 ? forward() : back();
+  }, { passive: false });
+  addEventListener('keydown', e => {
+    if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); forward(); }
+    if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); back(); }
+  });
+  let ty = null;
+  addEventListener('touchstart', e => { ty = e.touches[0].clientY; }, { passive: true });
+  addEventListener('touchend', e => {
+    if (ty === null) return;
+    const dy = ty - e.changedTouches[0].clientY; ty = null;
+    if (Math.abs(dy) > 40) dy > 0 ? forward() : back();
+  });
+
+  showText(0); setRail(0);
+})();
+</script>
+</body>
+</html>
